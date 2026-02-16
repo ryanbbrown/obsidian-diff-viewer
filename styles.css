@@ -1,8 +1,188 @@
-/*
+.diff-view-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.diff-view-empty {
+	padding: 24px;
+	color: var(--text-muted);
+	text-align: center;
+}
 
-If your plugin does not need CSS, delete this file.
+.diff-view-scroll {
+	flex: 1;
+	overflow-y: auto;
+}
 
-*/
+/* Collapsible file section */
+.diff-view-section {
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.diff-view-section-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 6px 12px;
+	background: var(--background-secondary);
+}
+
+.diff-view-section-left {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	cursor: pointer;
+	min-width: 0;
+	flex: 1;
+}
+
+.diff-view-chevron {
+	font-size: 14px;
+	color: var(--text-muted);
+	transition: transform 100ms ease;
+	display: inline-block;
+	flex-shrink: 0;
+}
+
+.diff-view-chevron.is-expanded {
+	transform: rotate(90deg);
+}
+
+.diff-view-filepath {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
+}
+
+.diff-view-actions {
+	display: flex;
+	gap: 6px;
+	flex-shrink: 0;
+}
+
+.diff-view-btn {
+	padding: 2px 10px;
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+	cursor: pointer;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	color: var(--text-normal);
+}
+
+.diff-view-btn:hover {
+	background: var(--background-modifier-hover);
+}
+
+.diff-view-btn-accept {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.diff-view-btn-accept:hover {
+	background: var(--interactive-accent-hover);
+}
+
+.diff-view-btn-reject {
+	color: var(--text-error);
+	border-color: var(--text-error);
+}
+
+/* Merge view area */
+.diff-view-merge {
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.diff-view-merge .cm-mergeView {
+	max-height: 60vh;
+	overflow: auto;
+}
+
+/* Diff highlight colors — vibrant base colors at moderate opacity */
+.diff-view-merge .cm-changedLine.cm-deletedLine {
+	background-color: rgba(248, 81, 73, 0.5) !important;
+}
+
+.diff-view-merge .cm-changedLine.cm-insertedLine {
+	background-color: rgba(63, 185, 80, 0.5) !important;
+}
+
+.diff-view-merge .cm-changedText.cm-deletedText {
+	background-color: rgba(248, 81, 73, 0.5) !important;
+}
+
+.diff-view-merge .cm-changedText.cm-insertedText {
+	background-color: rgba(63, 185, 80, 0.5) !important;
+}
+
+/* Fold/unfold widgets for unchanged lines */
+.diff-view-fold-widget {
+	background: var(--background-modifier-border) !important;
+	padding: 0 10px !important;
+	height: 24px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.diff-view-fold-widget:hover {
+	background: var(--background-modifier-hover) !important;
+	color: var(--text-normal);
+}
+
+/* Subtle styling for the collapse-back bar (expanded state) */
+.diff-view-fold-expanded {
+	background: transparent !important;
+	border-bottom: 1px dashed var(--background-modifier-border);
+	opacity: 0.6;
+}
+
+.diff-view-fold-expanded:hover {
+	opacity: 1;
+	background: var(--background-modifier-hover) !important;
+}
+
+/* Children must not capture clicks */
+.diff-view-fold-widget > * {
+	pointer-events: none;
+}
+
+.diff-collapse-icon {
+	font-size: 12px;
+	opacity: 0.7;
+}
+
+/* Revert (apply chunk) button — flat arrow between the two editors */
+.diff-view-merge .cm-merge-revert {
+	display: flex;
+	align-items: stretch;
+	justify-content: center;
+	background: var(--background-secondary) !important;
+	border-left: 1px solid var(--background-modifier-border);
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.diff-view-merge .diff-view-revert-btn {
+	background: none !important;
+	border: none !important;
+	box-shadow: none !important;
+	border-radius: 0 !important;
+	color: var(--text-muted);
+	font-size: 14px;
+	cursor: pointer;
+	padding: 0 2px;
+	line-height: 1;
+}
+
+.diff-view-merge .diff-view-revert-btn:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover) !important;
+}
