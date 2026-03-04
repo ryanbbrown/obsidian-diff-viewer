@@ -171,7 +171,7 @@ export class DiffView extends ItemView {
 				extensions: [
 					...foldUnchangedExtension(syncB),
 					lineNumbers(),
-					],
+				],
 			},
 			parent: section.mergeContainer,
 			revertControls: "a-to-b",
@@ -211,7 +211,7 @@ export class DiffView extends ItemView {
 		}
 	}
 
-	/** Accept current state of editor A (includes any partial chunk reverts). */
+	/** Accept current state of editor B (includes any partial chunk reverts). */
 	private handleAccept(path: string): void {
 		const section = this.sections.get(path);
 		if (!section) return;

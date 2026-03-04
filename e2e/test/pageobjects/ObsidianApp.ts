@@ -160,12 +160,20 @@ class ObsidianApp {
     return fs.readFile(fullPath, "utf-8");
   }
 
-  /** Closes the active tab/leaf. */
-  async closeActiveTab() {
-    await browser.execute(() => {
+  /** Returns the content of both MergeView editors for the first diff section. */
+  async getMergeViewContent(): Promise<{a: string, b: string} | null> {
+    return browser.execute(() => {
       // @ts-expect-error 'app' exists in Obsidian
-      declare const app: App;
-      app.workspace.activeLeaf?.detach();
+      declare const app: any;
+      const leaves = app.workspace.getLeavesOfType("external-diff-view");
+      if (!leaves.length) return null;
+      const view = leaves[0].view as any;
+      const section = view.sections.values().next().value;
+      if (!section?.mergeView) return null;
+      return {
+        a: section.mergeView.a.state.doc.toString(),
+        b: section.mergeView.b.state.doc.toString(),
+      };
     });
   }
 
@@ -182,22 +190,6 @@ class ObsidianApp {
     await browser.pause(500);
   }
 
-  /** Closes all diff view tabs and clears pending diffs in the plugin. */
-  async closeDiffTabs() {
-    await browser.execute((pluginId: string) => {
-      // @ts-expect-error 'app' exists in Obsidian
-      declare const app: App;
-      const leaves = app.workspace.getLeavesOfType("external-diff-view");
-      for (const leaf of leaves) {
-        leaf.detach();
-      }
-      const plugin = app.plugins.plugins[pluginId] as any;
-      if (plugin?.pendingDiffs) {
-        plugin.pendingDiffs.clear();
-      }
-    }, PLUGIN_ID);
-    await browser.pause(500);
-  }
 }
 
 export default new ObsidianApp();

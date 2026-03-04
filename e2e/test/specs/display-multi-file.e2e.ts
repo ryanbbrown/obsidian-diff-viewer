@@ -12,7 +12,5 @@ describe("Diff display", () => {
     await ObsidianApp.modifyFileExternally(filePath2, "File two modified");
 
     await ObsidianApp.waitForDiffSectionCount(2);
-    const sections = await ObsidianApp.getDiffSections();
-    expect(sections.length).toBe(2);
   });
 });

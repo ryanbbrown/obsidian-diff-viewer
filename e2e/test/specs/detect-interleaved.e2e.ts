@@ -30,19 +30,7 @@ describe("External change detection", () => {
     await ObsidianApp.waitForDiffTab();
 
     // Diff should show only the external change (relative to post-internal state)
-    const diffContent = await browser.execute(() => {
-      // @ts-expect-error 'app' exists in Obsidian
-      declare const app: any;
-      const leaves = app.workspace.getLeavesOfType("external-diff-view");
-      if (!leaves.length) return null;
-      const view = leaves[0].view as any;
-      const section = view.sections.values().next().value;
-      if (!section?.mergeView) return null;
-      return {
-        a: section.mergeView.a.state.doc.toString(),
-        b: section.mergeView.b.state.doc.toString(),
-      };
-    });
+    const diffContent = await ObsidianApp.getMergeViewContent();
 
     expect(diffContent).not.toBeNull();
     // Side A = oldContent (snapshot baseline), Side B = newContent (after second external edit)

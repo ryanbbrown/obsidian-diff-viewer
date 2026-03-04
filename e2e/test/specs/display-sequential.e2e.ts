@@ -21,19 +21,7 @@ describe("Diff display", () => {
     expect(sections.length).toBe(1);
 
     // The diff should show the deletion (line 2) and the addition (line 6).
-    const diffContent = await browser.execute(() => {
-      // @ts-expect-error 'app' exists in Obsidian
-      declare const app: any;
-      const leaves = app.workspace.getLeavesOfType("external-diff-view");
-      if (!leaves.length) return null;
-      const view = leaves[0].view as any;
-      const section = view.sections.values().next().value;
-      if (!section?.mergeView) return null;
-      return {
-        a: section.mergeView.a.state.doc.toString(),
-        b: section.mergeView.b.state.doc.toString(),
-      };
-    });
+    const diffContent = await ObsidianApp.getMergeViewContent();
 
     expect(diffContent).not.toBeNull();
     // Side A = oldContent (original), Side B = newContent (latest external edits)
