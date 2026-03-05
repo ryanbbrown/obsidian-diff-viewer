@@ -203,8 +203,6 @@ export default class ExternalDiffPlugin extends Plugin {
 		}
 	}
 
-	private static USER_EVENT_PREFIXES = ["input", "delete", "move", "select", "undo", "redo"];
-
 	/** Create the CM6 extension that detects external changes via transaction annotations. */
 	private createDetectionExtension(): Extension {
 		return EditorView.updateListener.of((update: ViewUpdate) => {
@@ -221,21 +219,27 @@ export default class ExternalDiffPlugin extends Plugin {
 				return;
 			}
 
-			const isUserEdit = update.transactions.some(tr => {
-				const event = tr.annotation(Transaction.userEvent);
-				return event !== undefined &&
-					ExternalDiffPlugin.USER_EVENT_PREFIXES.some(p => event === p || event.startsWith(p + "."));
-			});
+			// Obsidian uses userEvent "set" exclusively when syncing external file
+			// content into the editor. Detect that specific signal rather than
+			// whitelisting all user events — Obsidian dispatches some user actions
+			// (e.g. paste) without standard CM6 userEvent annotations.
+			const isExternalSync = update.transactions.some(tr =>
+				tr.annotation(Transaction.userEvent) === "set"
+			);
 
-			if (isUserEdit) {
-				// User edit — update baseline
-				this.baselines.set(path, update.state.doc.toString());
-			} else {
-				// External change — show diff
+			if (isExternalSync) {
 				const newContent = update.state.doc.toString();
 				const oldContent = this.baselines.get(path);
 				if (oldContent !== undefined && oldContent !== newContent) {
 					this.handleExternalChange(path, oldContent, newContent);
+				}
+			} else {
+				this.baselines.set(path, update.state.doc.toString());
+				// User editing a file with a pending diff implicitly resolves it
+				if (this.pendingDiffs.has(path)) {
+					this.pendingDiffs.delete(path);
+					this.getExistingDiffView()?.removeFile(path);
+					this.persistState();
 				}
 			}
 		});

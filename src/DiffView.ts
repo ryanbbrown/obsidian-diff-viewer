@@ -231,7 +231,7 @@ export class DiffView extends ItemView {
 	}
 
 	/** Remove a resolved file and re-render or close if empty. */
-	private removeFile(path: string): void {
+	removeFile(path: string): void {
 		const section = this.sections.get(path);
 		section?.mergeView?.destroy();
 		this.sections.delete(path);
