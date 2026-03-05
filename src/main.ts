@@ -1,6 +1,7 @@
-import {App, Editor, MarkdownView, Modal, Plugin, Setting, TFile} from "obsidian";
+import {App, Editor, MarkdownView, Modal, Plugin, Setting, TAbstractFile, TFile} from "obsidian";
+import {EditorView, ViewUpdate} from "@codemirror/view";
+import {Transaction, Extension} from "@codemirror/state";
 import {DEFAULT_SETTINGS, ExternalDiffSettings, ExternalDiffSettingTab} from "./settings";
-import {FileWatcher} from "./FileWatcher";
 import {DiffView, DIFF_VIEW_TYPE, PendingDiff} from "./DiffView";
 
 interface PersistedDiffEntry {
@@ -16,32 +17,41 @@ interface PersistedData {
 
 export default class ExternalDiffPlugin extends Plugin {
 	settings: ExternalDiffSettings;
-	private fileWatcher: FileWatcher;
 	private pendingDiffs = new Map<string, PendingDiff>();
+	private baselines = new Map<string, string>();
+	private selfModifyPaths = new Set<string>();
 	private restoredDiffs: PersistedDiffEntry[] = [];
 	private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 	async onload() {
 		await this.loadSettings();
 
-		this.fileWatcher = new FileWatcher(
-			this.app,
-			this.settings,
-			(path, oldContent, newContent) => this.handleExternalChange(path, oldContent, newContent),
-		);
-
 		this.registerView(DIFF_VIEW_TYPE, (leaf) => new DiffView(leaf));
 
-		this.registerEvent(this.app.workspace.on("editor-change", (_editor, info) => {
-			if (info instanceof MarkdownView && info.file) {
-				this.fileWatcher.markAsInternalEdit(info.file.path);
+		// CM6 detection: register updateListener on all editors
+		this.registerEditorExtension(this.createDetectionExtension());
+
+		// Fallback: detect changes to files not open in any editor
+		this.registerEvent(this.app.vault.on("modify", this.handleModifyFallback));
+
+		// Baseline housekeeping
+		this.registerEvent(this.app.vault.on("create", async (file) => {
+			if (file instanceof TFile && file.extension === "md") {
+				this.baselines.set(file.path, await this.app.vault.read(file));
 			}
 		}));
-
-		this.registerEvent(this.app.vault.on("modify", this.fileWatcher.handleModify));
-		this.registerEvent(this.app.vault.on("create", this.fileWatcher.handleCreate));
-		this.registerEvent(this.app.vault.on("delete", this.fileWatcher.handleDelete));
-		this.registerEvent(this.app.vault.on("rename", this.fileWatcher.handleRename));
+		this.registerEvent(this.app.vault.on("delete", (file) => {
+			if (file instanceof TFile) this.baselines.delete(file.path);
+		}));
+		this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
+			if (file instanceof TFile) {
+				const content = this.baselines.get(oldPath);
+				if (content !== undefined) {
+					this.baselines.delete(oldPath);
+					this.baselines.set(file.path, content);
+				}
+			}
+		}));
 
 		this.addCommand({
 			id: "toggle-external-change-detection",
@@ -70,7 +80,7 @@ export default class ExternalDiffPlugin extends Plugin {
 					const lines = oldContent.split("\n");
 					lines.splice(line + 1, 0, text);
 					const newContent = lines.join("\n");
-					this.fileWatcher.markAsInternalEdit(view.file.path);
+					this.selfModifyPaths.add(view.file.path);
 					this.app.vault.modify(view.file, newContent);
 					this.handleExternalChange(view.file.path, oldContent, newContent);
 				}).open();
@@ -94,7 +104,7 @@ export default class ExternalDiffPlugin extends Plugin {
 					lines.splice(editor.getCursor().line, 1);
 					newContent = lines.join("\n");
 				}
-				this.fileWatcher.markAsInternalEdit(view.file.path);
+				this.selfModifyPaths.add(view.file.path);
 				this.app.vault.modify(view.file, newContent);
 				this.handleExternalChange(view.file.path, oldContent, newContent);
 			},
@@ -103,7 +113,12 @@ export default class ExternalDiffPlugin extends Plugin {
 		this.addSettingTab(new ExternalDiffSettingTab(this.app, this));
 
 		this.app.workspace.onLayoutReady(async () => {
-			await this.fileWatcher.start();
+			// Snapshot all markdown files as baselines
+			const files = this.app.vault.getMarkdownFiles();
+			await Promise.all(files.map(async (file) => {
+				this.baselines.set(file.path, await this.app.vault.read(file));
+			}));
+			// Restore pending diffs after baselines are loaded
 			if (this.restoredDiffs.length > 0) {
 				await this.restorePendingDiffs(this.restoredDiffs);
 				this.restoredDiffs = [];
@@ -120,7 +135,6 @@ export default class ExternalDiffPlugin extends Plugin {
 			settings: this.settings,
 			pendingDiffs: this.serializePendingDiffs(),
 		});
-		this.fileWatcher.destroy();
 	}
 
 	async loadSettings() {
@@ -134,6 +148,11 @@ export default class ExternalDiffPlugin extends Plugin {
 			settings: this.settings,
 			pendingDiffs: this.serializePendingDiffs(),
 		});
+	}
+
+	/** Mark a path as being modified by the plugin itself (suppresses detection). */
+	markAsSelfModify(path: string): void {
+		this.selfModifyPaths.add(path);
 	}
 
 	/** Serialize pending diffs to a persistable format. */
@@ -173,6 +192,92 @@ export default class ExternalDiffPlugin extends Plugin {
 		if (this.pendingDiffs.size > 0) {
 			this.persistState();
 		}
+	}
+
+	private static USER_EVENT_PREFIXES = ["input", "delete", "move", "select", "undo", "redo"];
+
+	/** Create the CM6 extension that detects external changes via transaction annotations. */
+	private createDetectionExtension(): Extension {
+		return EditorView.updateListener.of((update: ViewUpdate) => {
+			if (!update.docChanged) return;
+			if (!this.settings.enabled) return;
+
+			const path = this.getPathForEditorView(update.view);
+			if (!path) return;
+
+			// Check if this is our own vault.modify
+			if (this.selfModifyPaths.has(path)) {
+				this.selfModifyPaths.delete(path);
+				this.baselines.set(path, update.state.doc.toString());
+				return;
+			}
+
+			const isUserEdit = update.transactions.some(tr => {
+				const event = tr.annotation(Transaction.userEvent);
+				return event !== undefined &&
+					ExternalDiffPlugin.USER_EVENT_PREFIXES.some(p => event === p || event.startsWith(p + "."));
+			});
+
+			if (isUserEdit) {
+				// User edit — update baseline
+				this.baselines.set(path, update.state.doc.toString());
+			} else {
+				// External change — show diff
+				const newContent = update.state.doc.toString();
+				const oldContent = this.baselines.get(path);
+				if (oldContent !== undefined && oldContent !== newContent) {
+					this.handleExternalChange(path, oldContent, newContent);
+				}
+			}
+		});
+	}
+
+	/** Resolve an EditorView to the file path it's editing. */
+	private getPathForEditorView(view: EditorView): string | null {
+		for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+			const mdView = leaf.view as MarkdownView;
+			if ((mdView as any).editor?.cm === view) {
+				return mdView.file?.path ?? null;
+			}
+		}
+		return null;
+	}
+
+	/** Fallback handler for vault.on('modify') — catches changes to files not open in any editor. */
+	private handleModifyFallback = async (file: TAbstractFile): Promise<void> => {
+		if (!(file instanceof TFile) || file.extension !== "md") return;
+		if (!this.settings.enabled) return;
+
+		// Skip if file is open in an editor (CM6 listener handles it)
+		if (this.isFileOpenInEditor(file.path)) return;
+
+		const newContent = await this.app.vault.read(file);
+		const oldContent = this.baselines.get(file.path);
+
+		if (oldContent === undefined) {
+			this.baselines.set(file.path, newContent);
+			return;
+		}
+
+		if (oldContent === newContent) return;
+
+		// Check self-modify
+		if (this.selfModifyPaths.has(file.path)) {
+			this.selfModifyPaths.delete(file.path);
+			this.baselines.set(file.path, newContent);
+			return;
+		}
+
+		this.handleExternalChange(file.path, oldContent, newContent);
+	};
+
+	/** Check if a file is currently open in any editor pane. */
+	private isFileOpenInEditor(path: string): boolean {
+		for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+			const view = leaf.view as MarkdownView;
+			if (view.file?.path === path) return true;
+		}
+		return false;
 	}
 
 	/** Find the existing diff view, or null if none open. */
@@ -230,10 +335,10 @@ export default class ExternalDiffPlugin extends Plugin {
 				this.completeReject(path, oldContent, file as TFile);
 			},
 			onWrite: (content: string) => {
-				this.fileWatcher.updateSnapshot(path, content);
+				this.baselines.set(path, content);
 				const file = this.app.vault.getAbstractFileByPath(path);
 				if (file) {
-					this.fileWatcher.markAsInternalEdit(path);
+					this.selfModifyPaths.add(path);
 					this.app.vault.modify(file as any, content);
 				}
 				this.persistState();
@@ -244,8 +349,8 @@ export default class ExternalDiffPlugin extends Plugin {
 	/** Complete the accept action after conflict check. */
 	private completeAccept(path: string, content: string, file: TFile): void {
 		this.pendingDiffs.delete(path);
-		this.fileWatcher.updateSnapshot(path, content);
-		this.fileWatcher.markAsInternalEdit(path);
+		this.baselines.set(path, content);
+		this.selfModifyPaths.add(path);
 		this.app.vault.modify(file, content);
 		this.persistState();
 	}
@@ -253,9 +358,9 @@ export default class ExternalDiffPlugin extends Plugin {
 	/** Complete the reject action after conflict check. */
 	private completeReject(path: string, oldContent: string, file: TFile): void {
 		this.pendingDiffs.delete(path);
-		this.fileWatcher.markAsInternalEdit(path);
+		this.selfModifyPaths.add(path);
 		this.app.vault.modify(file, oldContent);
-		this.fileWatcher.updateSnapshot(path, oldContent);
+		this.baselines.set(path, oldContent);
 		this.persistState();
 	}
 

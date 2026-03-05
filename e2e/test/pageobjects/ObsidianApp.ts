@@ -74,7 +74,7 @@ class ObsidianApp {
         declare const app: App;
         const file = app.workspace.getActiveFile()!;
         const plugin = app.plugins.plugins[pluginId] as any;
-        plugin.fileWatcher.markAsInternalEdit(file.path);
+        plugin.markAsSelfModify(file.path);
         await app.vault.modify(file, text);
       }, content, PLUGIN_ID);
     }
@@ -99,7 +99,7 @@ class ObsidianApp {
       declare const app: App;
       const file = app.vault.getAbstractFileByPath(path)!;
       const plugin = app.plugins.plugins[pluginId] as any;
-      plugin.fileWatcher.markAsInternalEdit(path);
+      plugin.markAsSelfModify(path);
       await app.vault.modify(file, text);
     }, filePath, content, PLUGIN_ID);
     await browser.pause(1000);

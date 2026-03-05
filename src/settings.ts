@@ -3,12 +3,10 @@ import type ExternalDiffPlugin from "./main";
 
 export interface ExternalDiffSettings {
 	enabled: boolean;
-	debounceMs: number;
 }
 
 export const DEFAULT_SETTINGS: ExternalDiffSettings = {
 	enabled: true,
-	debounceMs: 1000,
 };
 
 export class ExternalDiffSettingTab extends PluginSettingTab {
@@ -31,19 +29,6 @@ export class ExternalDiffSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.enabled = value;
 					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName("Debounce delay (ms)")
-			.setDesc("Time after an internal edit before external changes are detected again")
-			.addText(text => text
-				.setValue(String(this.plugin.settings.debounceMs))
-				.onChange(async (value) => {
-					const num = parseInt(value, 10);
-					if (!isNaN(num) && num >= 0) {
-						this.plugin.settings.debounceMs = num;
-						await this.plugin.saveSettings();
-					}
 				}));
 	}
 }
