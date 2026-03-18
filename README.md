@@ -28,7 +28,7 @@ An Obsidian plugin that detects when external tools modify your vault files and 
 ### Manual
 
 1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/ryanbbrown/obsidian-drift/releases)
-2. Create a folder `VaultFolder/.obsidian/plugins/obsidian-drift/`
+2. Create a folder `VaultFolder/.obsidian/plugins/drift/`
 3. Copy the downloaded files into that folder
 4. Restart Obsidian and enable the plugin in **Settings → Community plugins**
 

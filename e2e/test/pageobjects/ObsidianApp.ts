@@ -4,7 +4,7 @@ import { browser, $ } from "@wdio/globals";
 import { App } from "obsidian";
 
 const TEST_VAULT_DIR = `.e2e_test_vault_${process.pid}`;
-const PLUGIN_ID = "obsidian-drift";
+const PLUGIN_ID = "drift";
 
 class ObsidianApp {
   /** Removes the test vault directory if it exists from previous test runs. */
@@ -165,7 +165,7 @@ class ObsidianApp {
     await browser.execute(() => {
       // @ts-expect-error 'app' exists in Obsidian
       declare const app: App;
-      app.commands.executeCommandById("obsidian-drift:open-diff-viewer");
+      app.commands.executeCommandById("drift:open-diff-viewer");
     });
   }
 
