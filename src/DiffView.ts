@@ -246,7 +246,7 @@ export class DiffView extends ItemView {
 
 	/** Accept all files and close the diff view. */
 	private handleAcceptAll(): void {
-		for (const [path, section] of this.sections) {
+		for (const [, section] of this.sections) {
 			const content = section.mergeView
 				? section.mergeView.b.state.doc.toString()
 				: section.diff.newContent;

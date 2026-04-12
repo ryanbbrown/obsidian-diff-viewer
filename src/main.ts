@@ -320,7 +320,7 @@ export default class ExternalDiffPlugin extends Plugin {
 	private async ensureDiffTab(): Promise<DiffView> {
 		const existing = this.getExistingDiffView();
 		if (existing) return existing;
-		const previousLeaf = this.app.workspace.activeLeaf;
+		const previousLeaf = this.app.workspace.getMostRecentLeaf();
 		const leaf = this.app.workspace.getLeaf("tab");
 		await leaf.setViewState({type: DIFF_VIEW_TYPE, active: false});
 		if (previousLeaf) {
