@@ -10,6 +10,14 @@
 	text-align: center;
 }
 
+.diff-view-toolbar {
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+	padding: 6px 12px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
 .diff-view-scroll {
 	flex: 1;
 	overflow-y: auto;

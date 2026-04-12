@@ -300,7 +300,7 @@ export default class ExternalDiffPlugin extends Plugin {
 		return leaves.length > 0 ? (leaves[0]!.view as DiffView) : null;
 	}
 
-	/** Open or focus the diff tab, populating it with all pending diffs. */
+	/** Open and focus the diff tab (for manual command). */
 	private async openDiffTab(): Promise<DiffView> {
 		const existing = this.getExistingDiffView();
 		if (existing) {
@@ -310,7 +310,23 @@ export default class ExternalDiffPlugin extends Plugin {
 		const leaf = this.app.workspace.getLeaf("tab");
 		await leaf.setViewState({type: DIFF_VIEW_TYPE, active: true});
 		const view = leaf.view as DiffView;
-		// Repopulate from stored pending diffs
+		for (const [path, diff] of this.pendingDiffs) {
+			view.addFile(path, diff);
+		}
+		return view;
+	}
+
+	/** Ensure the diff tab exists in the background without stealing focus. */
+	private async ensureDiffTab(): Promise<DiffView> {
+		const existing = this.getExistingDiffView();
+		if (existing) return existing;
+		const previousLeaf = this.app.workspace.activeLeaf;
+		const leaf = this.app.workspace.getLeaf("tab");
+		await leaf.setViewState({type: DIFF_VIEW_TYPE, active: false});
+		if (previousLeaf) {
+			this.app.workspace.setActiveLeaf(previousLeaf, {focus: true});
+		}
+		const view = leaf.view as DiffView;
 		for (const [path, diff] of this.pendingDiffs) {
 			view.addFile(path, diff);
 		}
@@ -322,29 +338,15 @@ export default class ExternalDiffPlugin extends Plugin {
 		return {
 			oldContent,
 			newContent,
-			onAccept: async (content: string) => {
+			onAccept: (content: string) => {
 				const file = this.app.vault.getAbstractFileByPath(path);
 				if (file instanceof TFile) {
-					const currentContent = await this.app.vault.read(file);
-					if (currentContent !== newContent) {
-						new ConflictModal(this.app, path, () => {
-							this.completeAccept(path, content, file);
-						}).open();
-						return;
-					}
 					this.completeAccept(path, content, file);
 				}
 			},
-			onReject: async () => {
+			onReject: () => {
 				const file = this.app.vault.getAbstractFileByPath(path);
 				if (file instanceof TFile) {
-					const currentContent = await this.app.vault.read(file);
-					if (currentContent !== newContent) {
-						new ConflictModal(this.app, path, () => {
-							this.completeReject(path, oldContent, file);
-						}).open();
-						return;
-					}
 					this.completeReject(path, oldContent, file);
 				}
 			},
@@ -390,30 +392,7 @@ export default class ExternalDiffPlugin extends Plugin {
 			return;
 		}
 
-		void this.openDiffTab().then(view => view.addFile(path, diff));
-	}
-}
-
-class ConflictModal extends Modal {
-	private onProceed: () => void;
-
-	constructor(app: App, path: string, onProceed: () => void) {
-		super(app);
-		this.onProceed = onProceed;
-	}
-
-	/** Render the conflict warning with proceed/cancel buttons. */
-	onOpen(): void {
-		this.contentEl.createEl("h3", {text: "File has changed"});
-		this.contentEl.createEl("p", {
-			text: "This file was modified since the diff was generated. Proceeding will overwrite those changes.",
-		});
-		new Setting(this.contentEl)
-			.addButton(btn => btn.setButtonText("Proceed").setCta().onClick(() => {
-				this.close();
-				this.onProceed();
-			}))
-			.addButton(btn => btn.setButtonText("Cancel").onClick(() => this.close()));
+		void this.ensureDiffTab().then(view => view.addFile(path, diff));
 	}
 }
 

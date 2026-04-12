@@ -23,3 +23,7 @@ data.json
 
 # e2e test vaults
 e2e/.e2e_test_vault*
+
+# claude
+.claude/
+.planning/

@@ -46,8 +46,8 @@ export const DIFF_VIEW_TYPE = "external-diff-view";
 export interface PendingDiff {
 	oldContent: string;
 	newContent: string;
-	onAccept: (content: string) => void | Promise<void>;
-	onReject: () => void | Promise<void>;
+	onAccept: (content: string) => void;
+	onReject: () => void;
 	onWrite: (content: string) => void;
 }
 
@@ -113,6 +113,14 @@ export class DiffView extends ItemView {
 		if (this.sections.size === 0) {
 			container.createDiv({cls: "diff-view-empty", text: "No pending changes."});
 			return;
+		}
+
+		if (this.sections.size > 1) {
+			const toolbar = container.createDiv({cls: "diff-view-toolbar"});
+			const acceptAllBtn = toolbar.createEl("button", {cls: "diff-view-btn diff-view-btn-accept", text: "Accept all"});
+			const rejectAllBtn = toolbar.createEl("button", {cls: "diff-view-btn diff-view-btn-reject", text: "Reject all"});
+			acceptAllBtn.addEventListener("click", () => this.handleAcceptAll());
+			rejectAllBtn.addEventListener("click", () => this.handleRejectAll());
 		}
 
 		const scrollArea = container.createDiv({cls: "diff-view-scroll"});
@@ -224,7 +232,7 @@ export class DiffView extends ItemView {
 		const content = section.mergeView
 			? section.mergeView.b.state.doc.toString()
 			: section.diff.newContent;
-		void section.diff.onAccept(content);
+		section.diff.onAccept(content);
 		this.removeFile(path);
 	}
 
@@ -232,8 +240,31 @@ export class DiffView extends ItemView {
 	private handleReject(path: string): void {
 		const section = this.sections.get(path);
 		if (!section) return;
-		void section.diff.onReject();
+		section.diff.onReject();
 		this.removeFile(path);
+	}
+
+	/** Accept all files and close the diff view. */
+	private handleAcceptAll(): void {
+		for (const [path, section] of this.sections) {
+			const content = section.mergeView
+				? section.mergeView.b.state.doc.toString()
+				: section.diff.newContent;
+			section.diff.onAccept(content);
+			section.mergeView?.destroy();
+		}
+		this.sections.clear();
+		this.leaf.detach();
+	}
+
+	/** Reject all files and close the diff view. */
+	private handleRejectAll(): void {
+		for (const [, section] of this.sections) {
+			section.diff.onReject();
+			section.mergeView?.destroy();
+		}
+		this.sections.clear();
+		this.leaf.detach();
 	}
 
 	/** Remove a resolved file and re-render or close if empty. */
