@@ -1,21 +1,17 @@
 # Drift
 
-An Obsidian plugin that detects when external tools modify your vault files and shows a side-by-side diff view so you can selectively accept or reject each change — without leaving Obsidian.
+A VS Code-style side-by-side diff viewer that lives inside Obsidian. Automatically detects external file changes (including AI coding agents) and shows you a before/after view with per-chunk accept/reject, accept all/reject all, and collapsible unchanged regions.
+
+![Drift demo](demo.gif)
 
 ## Features
 
-- **Automatic detection** — External file changes are detected instantly via CM6 transaction monitoring. No polling or debounce delays.
-- **Side-by-side diff view** — See exactly what changed with a CodeMirror MergeView, including syntax highlighting and fold controls for unchanged regions.
-- **Per-chunk accept/reject** — Accept or reject individual changes, not just the whole file. Revert buttons on each diff chunk let you cherry-pick.
+- **Instant detection** — No polling or delays. Uses CodeMirror 6 transaction monitoring to detect external changes the moment they happen.
+- **Per-chunk accept/reject** — Cherry-pick individual changes, not just all-or-nothing. Revert buttons on each diff chunk let you keep what you want and undo what you don't.
+- **Accept all / Reject all** — Bulk actions when you have multiple files with pending diffs.
 - **Persistence** — Pending diffs survive Obsidian restarts. Stale diffs (file deleted or reverted) are automatically discarded on reload.
-- **Conflict detection** — If a file changes after a diff was generated, the plugin warns you before overwriting.
 - **Edit protection** — Editing a file with pending diffs shows a warning modal, preventing accidental data loss.
-
-## Use cases
-
-- Review changes made by external scripts, CLI tools, or sync services
-- Inspect modifications from Obsidian Git or other plugins that write to files directly
-- Catch unexpected changes from cloud sync (Dropbox, iCloud, Syncthing, etc.)
+- **Tool-agnostic** — Works with any tool that modifies vault files: AI coding agents, sync services, scripts, other plugins.
 
 ## Installation
 
@@ -38,7 +34,7 @@ This plugin is currently awaiting approval in the Obsidian community plugin stor
 
 Once enabled, the plugin runs automatically. When an external tool modifies a markdown file in your vault:
 
-1. A **Drift** tab opens showing the side-by-side diff
+1. A **Drift** tab opens in the background showing the side-by-side diff
 2. Use **Accept All** to keep the new content, or **Reject All** to revert to the original
 3. Use the **revert button** on individual chunks to selectively undo specific changes
 4. Use the **Open diff viewer** command to reopen the tab if you close it
