@@ -15,15 +15,9 @@ A VS Code-style side-by-side diff viewer that lives inside Obsidian. Automatical
 
 ## Installation
 
-This plugin is currently awaiting approval in the Obsidian community plugin store. In the meantime, you can install it using one of these methods:
+Install Drift from the [Obsidian community plugin directory](https://community.obsidian.md/plugins/drift).
 
-### Using BRAT (recommended)
-
-1. Install [BRAT](https://github.com/TfTHacker/obsidian42-brat) from the community plugin store
-2. Open command palette → **BRAT: Add a beta plugin for testing**
-3. Enter `ryanbbrown/obsidian-drift`
-
-### Manual
+### Manual install
 
 1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/ryanbbrown/obsidian-drift/releases)
 2. Create a folder `VaultFolder/.obsidian/plugins/drift/`
