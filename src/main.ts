@@ -32,7 +32,7 @@ export default class ExternalDiffPlugin extends Plugin {
 	private selfModifyPaths = new Set<string>();
 	private pendingEditWarning = new Set<string>();
 	private restoredDiffs: PersistedDiffEntry[] = [];
-	private saveTimer: ReturnType<typeof setTimeout> | null = null;
+	private saveTimer: ReturnType<typeof activeWindow.setTimeout> | null = null;
 
 	async onload() {
 		await this.loadSettings();
@@ -88,7 +88,7 @@ export default class ExternalDiffPlugin extends Plugin {
 
 	onunload() {
 		if (this.saveTimer) {
-			clearTimeout(this.saveTimer);
+			activeWindow.clearTimeout(this.saveTimer);
 			this.saveTimer = null;
 		}
 		void this.saveData({
@@ -148,7 +148,7 @@ export default class ExternalDiffPlugin extends Plugin {
 	/** Schedule a debounced save of state to disk. */
 	private persistState(): void {
 		if (this.saveTimer) return;
-		this.saveTimer = setTimeout(() => {
+		this.saveTimer = activeWindow.setTimeout(() => {
 			this.saveTimer = null;
 			void this.saveData({
 				settings: this.settings,
@@ -432,4 +432,3 @@ class EditWarningModal extends Modal {
 		if (!this.resolved) this.onCancel();
 	}
 }
-

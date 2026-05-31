@@ -23,15 +23,13 @@ class CollapsedWidget extends WidgetType {
 
 	/** Render the collapsed region bar. */
 	toDOM(view: EditorView) {
-		const div = document.createElement("div");
+		const div = createDiv();
 		div.className = "diff-view-fold-widget";
-		const icon = document.createElement("span");
+		const icon = div.createSpan();
 		icon.className = "diff-collapse-icon";
 		icon.textContent = "↕";
-		div.appendChild(icon);
-		const label = document.createElement("span");
+		const label = div.createSpan();
 		label.textContent = ` ${this.lines} unchanged lines`;
-		div.appendChild(label);
 		div.addEventListener("click", () => {
 			view.dispatch({effects: toggleFold.of(this.index)});
 			view.state.facet(foldSyncCallback)(this.index);
@@ -52,15 +50,13 @@ class CollapseBarWidget extends WidgetType {
 
 	/** Render the collapse-back bar shown after a region is expanded. */
 	toDOM(view: EditorView) {
-		const div = document.createElement("div");
+		const div = createDiv();
 		div.className = "diff-view-fold-widget diff-view-fold-expanded";
-		const icon = document.createElement("span");
+		const icon = div.createSpan();
 		icon.className = "diff-collapse-icon";
 		icon.textContent = "↕";
-		div.appendChild(icon);
-		const label = document.createElement("span");
+		const label = div.createSpan();
 		label.textContent = ` ${this.lines} unchanged lines`;
-		div.appendChild(label);
 		div.addEventListener("click", () => {
 			view.dispatch({effects: toggleFold.of(this.index)});
 			view.state.facet(foldSyncCallback)(this.index);

@@ -190,7 +190,7 @@ export class DiffView extends ItemView {
 			parent: section.mergeContainer,
 			revertControls: "a-to-b",
 			renderRevertControl: () => {
-				const btn = document.createElement("button");
+				const btn = createEl("button");
 				btn.className = "diff-view-revert-btn";
 				btn.textContent = "←";
 				btn.title = "Revert this change";
@@ -212,7 +212,7 @@ export class DiffView extends ItemView {
 		const revertContainer = section.mergeContainer?.querySelector(".cm-merge-revert");
 		if (revertContainer) {
 			revertContainer.addEventListener("mousedown", () => {
-				setTimeout(() => {
+				activeWindow.setTimeout(() => {
 					if (!section.mergeView) return;
 					const content = section.mergeView.b.state.doc.toString();
 					section.diff.onWrite(content);
